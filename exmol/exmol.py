@@ -367,13 +367,14 @@ def get_basic_alphabet() -> Set[str]:
 
 def run_stoned(
     start_smiles: str,
-    fp_type: str = "ECFP4",
+    fp_type: Union[str, Callable] = "ECFP4",
     num_samples: int = 2000,
     max_mutations: int = 2,
     min_mutations: int = 1,
     alphabet: Union[List[str], Set[str]] = None,
     return_selfies: bool = False,
     _pbar: Any = None,
+    score_func: Optional[Callable] = None,
 ) -> Union[Tuple[List[str], List[float]], Tuple[List[str], List[str], List[float]]]:
     """Run ths STONED SELFIES algorithm. Typically not used, call :func:`sample_space` instead.
 
@@ -440,9 +441,18 @@ def run_stoned(
     filter_smiles = [s for i, s in enumerate(all_smiles_collect) if to_keep[i]]
 
     # compute similarity scores
-    base_fp = stoned.get_fingerprint(start_mol, fp_type=fp_type)
-    fps = [stoned.get_fingerprint(m, fp_type) for m in filter_mols]
-    scores = BulkTanimotoSimilarity(base_fp, fps)  # type: List[float]
+    if isinstance(fp_type, Callable):
+        if _pbar:
+            _pbar.set_description(f"Custom fingerprint/scoring function being used!")
+        base_fp = fp_type(start_mol)
+        fps = [fp_type(m) for m in filter_mols]
+        scores = [score_func(base_fp, fp) for fp in fps]
+    else:
+        if _pbar:
+            _pbar.set_description(f"RDKit fingerprint/Tanimoto being used!")
+        base_fp = stoned.get_fingerprint(start_mol, fp_type=fp_type)
+        fps = [stoned.get_fingerprint(m, fp_type) for m in filter_mols]
+        scores = BulkTanimotoSimilarity(base_fp, fps)  # type: List[float]
 
     if _pbar:
         _pbar.set_description(f"🥌STONED🥌 Done")
