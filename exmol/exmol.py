@@ -515,7 +515,7 @@ def run_chemed(
 def run_custom(
     origin_smiles: str,
     data: List[Union[str, rdchem.Mol]],
-    fp_type: str = "ECFP4",
+    fp_type: Union[str, Callable] = "ECFP4",
     _pbar: Any = None,
     **kwargs,
 ) -> Tuple[List[str], List[float]]:
@@ -532,7 +532,20 @@ def run_custom(
     else:
         print("⚡CUSTOM⚡")
     mol0 = smi2mol(origin_smiles)
-    fp0 = stoned.get_fingerprint(mol0, fp_type)
+    if isinstance(fp_type, Callable):
+        fp0 = fp_type(mol0)
+        score_func = kwargs.get("score_func", None)
+        if not score_func:
+            raise ValueError(
+                f"No scoring function provided in `kwargs`; please pass `score_func` as a kwarg."
+            )
+        assert isinstance(
+            score_func, Callable
+        ), f"{score_func} is not a callable function."
+        if _pbar:
+            _pbar.set_description("⚡CUSTOM⚡ - Custom fingerprinting/scoring function")
+    else:
+        fp0 = stoned.get_fingerprint(mol0, fp_type)
     scores = []
     smiles = []
     # drop invalid molecules
@@ -544,8 +557,14 @@ def run_custom(
         if m is None:
             continue
         smiles.append(mol2smi(m))
-        fp = stoned.get_fingerprint(m, fp_type)
-        scores.append(TanimotoSimilarity(fp0, fp))
+        # in the conventional stream, use Tanimoto similarity
+        if isinstance(fp_type, str):
+            fp = stoned.get_fingerprint(m, fp_type)
+            scores.append(TanimotoSimilarity(fp0, fp))
+        # otherwise, use our custom fingerprinting and scoring function
+        else:
+            fp = fp_type(m)
+            scores.append(score_func(fp0, fp))
         if _pbar:
             _pbar.update()
     return smiles, scores
