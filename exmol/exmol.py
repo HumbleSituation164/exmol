@@ -732,11 +732,22 @@ def sample_space(
     pbar.set_description("🔭Projecting...🔭")
 
     # compute distance matrix
-    full_dmat = _fp_dist_matrix(
-        [e.smiles for e in exps],
-        method_kwargs["fp_type"] if ("fp_type" in method_kwargs) else "ECFP4",
-        _pbar=pbar,
-    )
+    if "fp_type" in method_kwargs:
+        fp_type = method_kwargs.get("fp_type")
+        if isinstance(fp_type, str):
+            full_dmat = _fp_dist_matrix(
+                [e.smiles for e in exps],
+                method_kwargs["fp_type"] if ("fp_type" in method_kwargs) else "ECFP4",
+                _pbar=pbar,
+            )
+        # if we specified a custom fp_type, embed and compute
+        # the distance with vectorized code
+        elif isinstance(fp_type, Callable):
+            fingerprints = np.array([fp_type(e.smiles) for e in exps])
+            from scipy.spatial.distance import pdist
+            full_dmat = pdist(fingerprints)
+        else:
+            raise NotImplementedError(f"Something is terribly wrong with sampled_space.")
 
     pbar.set_description("🥰Finishing up🥰")
 
