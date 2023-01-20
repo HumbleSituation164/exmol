@@ -444,8 +444,8 @@ def run_stoned(
     if isinstance(fp_type, Callable):
         if _pbar:
             _pbar.set_description(f"Custom fingerprint/scoring function being used!")
-        base_fp = fp_type(start_mol)
-        fps = [fp_type(m) for m in filter_mols]
+        base_fp = fp_type(start_smiles)
+        fps = [fp_type(m) for m in filter_smiles]
         scores = [score_func(base_fp, fp) for fp in fps]
     else:
         if _pbar:
