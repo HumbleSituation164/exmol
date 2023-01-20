@@ -744,8 +744,8 @@ def sample_space(
         # the distance with vectorized code
         elif isinstance(fp_type, Callable):
             fingerprints = np.array([fp_type(e.smiles) for e in exps])
-            from scipy.spatial.distance import pdist
-            full_dmat = pdist(fingerprints)
+            from sklearn.metrics import pairwise_distances
+            full_dmat = pairwise_distances(fingerprints)
         else:
             raise NotImplementedError(f"Something is terribly wrong with sampled_space.")
 
